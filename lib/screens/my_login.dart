@@ -1,8 +1,5 @@
-// ignore_for_file: file_names
-
 import 'package:flutter/material.dart';
 import 'package:projectchair/datas/db/db_functions.dart';
-
 import 'package:projectchair/main.dart';
 import 'package:projectchair/screens/my_home.dart';
 import 'package:projectchair/screens/my_sign_up.dart';
@@ -17,17 +14,42 @@ class MyLogin extends StatefulWidget {
 }
 
 class _MyLoginState extends State<MyLogin> {
-  @override
-  void initState() {
-    super.initState();
-    getAll();
-  }
-
-  // ignore: non_constant_identifier_names
-  final GlobalKey<FormState> Formkey = GlobalKey<FormState>();
-
+  final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
+
+  void _toggleLoading() {
+    setState(() {
+      _isLoading = !_isLoading;
+    });
+  }
+
+  Future<void> _login() async {
+    final email = _emailController.text;
+    final password = _passwordController.text;
+
+    if (formKey.currentState!.validate()) {
+      _toggleLoading();
+      bool isValidUser = userListNotifier.value.any(
+          (element) => element.email == email && element.password == password);
+
+      if (isValidUser) {
+        final sharedPrefs = await SharedPreferences.getInstance();
+        await sharedPrefs.setBool(SAVE_KEY_NAME, true);
+
+        if (mounted) {
+          Navigator.pushReplacement(
+              context, MaterialPageRoute(builder: (context) => const MyHome()));
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid email or password')),
+        );
+      }
+      _toggleLoading();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +61,7 @@ class _MyLoginState extends State<MyLogin> {
       backgroundColor: MyColors.background,
       body: SingleChildScrollView(
         child: Form(
-          key: Formkey,
+          key: formKey,
           child: Column(
             children: [
               const Row(
@@ -57,16 +79,17 @@ class _MyLoginState extends State<MyLogin> {
                   autovalidateMode: AutovalidateMode.onUserInteraction,
                   controller: _emailController,
                   decoration: const InputDecoration(
-                      border: OutlineInputBorder(), hintText: 'Email'),
+                    border: OutlineInputBorder(),
+                    hintText: 'Email',
+                  ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Please enter an email address.';
                     }
-                    // Check if the value contains any special characters other than '.', '_', '%', '+', and '-'
-                    if (RegExp(r'[!#$%^&*(),?":{}|<>]').hasMatch(value)) {
-                      return 'Special characters not allowed';
+                    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value)) {
+                      return 'Please enter a valid email address.';
                     }
-                    return null; // Return null if validation succeeds
+                    return null;
                   },
                 ),
               ),
@@ -74,11 +97,14 @@ class _MyLoginState extends State<MyLogin> {
                 padding: const EdgeInsets.all(16),
                 child: TextFormField(
                   controller: _passwordController,
+                  obscureText: true,
                   decoration: const InputDecoration(
-                      border: OutlineInputBorder(), hintText: 'Password'),
+                    border: OutlineInputBorder(),
+                    hintText: 'Password',
+                  ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'please enter your password';
+                      return 'Please enter your password';
                     }
                     return null;
                   },
@@ -88,40 +114,18 @@ class _MyLoginState extends State<MyLogin> {
                 height: 50,
                 width: 360,
                 child: ElevatedButton(
-                  onPressed: () async {
-                    final email = _emailController.text;
-                    final password = _passwordController.text;
-
-                    if (Formkey.currentState!.validate()) {
-                      bool isValidUser = userListNotifier.value.any((element) =>
-                          element.email == email &&
-                          element.password == password);
-
-                      if (isValidUser) {
-                        final sharedPrefs =
-                            await SharedPreferences.getInstance();
-                        await sharedPrefs.setBool(SAVE_KEY_NAME, true);
-
-                        // ignore: use_build_context_synchronously
-                        Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const MyHome()));
-                      } else {
-                        // Handle invalid credentials
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Invalid email or password')),
-                        );
-                      }
-                    }
-                  },
-                  style: const ButtonStyle(
-                      backgroundColor: MaterialStatePropertyAll(Colors.black)),
-                  child: const Text(
-                    'Login',
-                    style: TextStyle(color: Colors.white, fontSize: 20),
+                  onPressed: _isLoading ? null : _login,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
                   ),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        )
+                      : const Text(
+                          'Login',
+                          style: TextStyle(color: Colors.white, fontSize: 20),
+                        ),
                 ),
               ),
               const SizedBox(
@@ -137,12 +141,14 @@ class _MyLoginState extends State<MyLogin> {
                     final sharedPrefs = await SharedPreferences.getInstance();
                     await sharedPrefs.setBool(SAVE_KEY_NAME, true);
 
-                    // ignore: use_build_context_synchronously
-                    Navigator.of(context).pushReplacement(MaterialPageRoute(
-                        builder: (context) => const MySignUp()));
+                    if (mounted) {
+                      Navigator.of(context).pushReplacement(MaterialPageRoute(
+                          builder: (context) => const MySignUp()));
+                    }
                   },
-                  style: const ButtonStyle(
-                      backgroundColor: MaterialStatePropertyAll(Colors.black)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                  ),
                   child: const Text(
                     'Sign Up',
                     style: TextStyle(color: Colors.white, fontSize: 20),
