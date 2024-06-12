@@ -54,7 +54,7 @@ class _MyEditprflState extends State<MyEditProfile> {
                       : (widget.data.image != null
                           ? FileImage(File(widget.data.image!))
                           : null),
-                  child: _image == null && widget.data.image == null
+                  child: _image == null || widget.data.image == null
                       ? GestureDetector(
                           onTap: () {
                             addimg();
